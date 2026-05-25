@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PHÂN LOẠI  RÁC CỦA LÊ XUÂN HIẾU</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #0066cc;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+        }
+        .box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            width: 400px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        input[type="file"] {
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #007BFF;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        video {
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <h1>PHÂN LOẠI RÁC CỦA LÊ XUÂN HIẾU</h1>
+
+    <div class="container">
+
+        <div class="box">
+            <h2>Upload ảnh</h2>
+            <input type="file" id="uploadInput" accept="image/*">
+            <button onclick="uploadImage()">Dự đoán</button>
+            <div class="result">Kết quả Upload: <span id="uploadResult">Chưa có kết quả</span></div>
+        </div>
+
+        <div class="box">
+            <h2>Webcam realtime</h2>
+            <video id="video" width="320" height="240" autoplay></video>
+            <br>
+            <button id="startBtn">Start Webcam</button>
+            <button id="stopBtn">Stop Webcam</button>
+            <div class="result">Kết quả Webcam: <span id="webcamResult">Chưa có kết quả</span></div>
+            <canvas id="canvas" width="224" height="224" style="display:none;"></canvas>
+        </div>
+
+    </div>
+
+<script>
+    function uploadImage() {
+        const fileInput = document.getElementById("uploadInput");
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("upload_image", file);
+
+        fetch('/predict_upload', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("uploadResult").innerText = data.result;
+            });
+    }
+
+    let stream;
+    let intervalId;
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const webcamResult = document.getElementById('webcamResult');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    startBtn.addEventListener('click', async () => {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        intervalId = setInterval(captureAndPredict, 2000);
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        clearInterval(intervalId);
+        video.srcObject = null;
+    });
+
+    function captureAndPredict() {
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, 224, 224);
+        const dataURL = canvas.toDataURL('image/jpeg');
+        const formData = new FormData();
+        formData.append("webcam_image", dataURL);
+
+        fetch('/predict_webcam', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                webcamResult.innerText = data.result;
+            });
+    }
+</script>
+</body>
+</html>
